@@ -24,12 +24,18 @@
     <ClCompile Include="Reservation_Station.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ROB.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Instruction_Unit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Reservation_Station.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ROB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
