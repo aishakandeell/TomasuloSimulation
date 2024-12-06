@@ -1,4 +1,5 @@
-//#ifndef INSTRUCTION_UNIT_H
+
+#pragma once
 #define INSTRUCTION_UNIT_H
 using namespace std;
 
