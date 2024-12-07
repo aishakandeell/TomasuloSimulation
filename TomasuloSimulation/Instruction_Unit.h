@@ -20,7 +20,7 @@ public:
     string opcode;
     vector<int> parsed;
     int issueCycle, execCycle, writeCycle, commitCycle; // timing of each state
-    InstructionState state;      // Current state 
+    InstructionState state, newstate;      // Current state 
 
     Instruction_Unit(string line);   //constructor        
     void updateState(InstructionState newState, int clockCycle); // Update instruction state

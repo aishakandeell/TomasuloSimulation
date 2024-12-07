@@ -8,6 +8,8 @@ using namespace std;
 
 Instruction_Unit::Instruction_Unit(string line)//constructor takes instruction in assembly
     : issueCycle(-1), execCycle(-1), writeCycle(-1), commitCycle(-1), state(issue) {
+     
+    newstate = issue;
     parseInstruction(line);
 }
 
@@ -165,8 +167,11 @@ void Instruction_Unit::parseInstruction(const string& line) {
 
 void Instruction_Unit::updateState(InstructionState newState, int clockCycle) {
     // Update the current state
-    state = newState;
 
+    state = newState;
+    cout << "state=" << state << "\n";
+    newstate = newState;
+    cout << "state=" << newstate << "\n";
     // Log the timing for the corresponding state
     switch (newState) {
     case issue:

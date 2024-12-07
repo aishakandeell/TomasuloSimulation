@@ -2,7 +2,13 @@
 #include <stdexcept>
 using namespace std;
 
-Register_File::Register_File(int size) : registers(size) {}
+Register_File::Register_File(int size) : registers(size) {
+    registers.resize(size);
+    for (int i = 0; i < size; ++i) {
+        registers[i].robIndex = -1;  // Initialize robIndex to -1 for all registers
+    }
+    cout << "Register file initialized with " << size << " registers.\n";
+}
 
 void Register_File::setDependency(int regIndex, int robIndex) {
     if (regIndex >= registers.size()) {
@@ -42,7 +48,11 @@ bool Register_File::isReady(int regIndex) const {
         cerr << "Index out of range: register file is ready for index " << regIndex << endl;
         return false; // Return false if the index is out of range
     }
-    return registers[regIndex].robIndex == -1;
+    if (registers[regIndex].robIndex == -1) {
+        return true;
+        }
+    return false;
+    
 }
 
 int Register_File::readRegister(int regIndex) const {

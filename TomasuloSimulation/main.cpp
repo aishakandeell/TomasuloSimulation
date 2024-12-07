@@ -25,7 +25,7 @@ int instructionsCommitted = 0; // Count of instructions committed
 
 void initializeRegisters(Register_File& registerFile) {
     for (int i = 0; i < 8; ++i) {
-        registerFile.writeRegister(i, i + 1);  // R0 = 1, R1 = 2, ..., R7 = 8
+        registerFile.writeRegister(i, i );  
     }
     cout << "Registers initialized.\n";
 }
@@ -55,7 +55,7 @@ void issueStage() {
     for (auto& rs : reservationStations) {
         if (!rs.isBusy() && rob.addEntry(&  instr, instr.parsed[1])) {
             rs.setBusy(true);//set busy in reservation station
-            rs.op = static_cast<Operation>(instr.parsed[0]); // Assign operation
+            //rs.op = static_cast<Operation>(instr.parsed[0]); // Assign operation
 
             
 
@@ -79,14 +79,15 @@ void issueStage() {
             // Update dependency for destination
             registerFile.setDependency(instr.parsed[1], rob.getLatestIndex());
 
-            instr.print();
+            
 
             instr.issueCycle = clockCycle; // Update issue cycle
             pipelineQueue.push_back(instr); // Add instruction to pipeline queue
             instructionQueue.pop(); // Remove from the queue
             instr.updateState(issue, clockCycle); // Update instruction state
             rs.setOperands(rs.Vj, rs.Vk);
-            instr.print();
+
+
             cout << "Issued in cycle " << instr.issueCycle<<"\n";
             return;
         }
@@ -121,15 +122,15 @@ void executeStage() {
         if (instr.getCurrentState() == issue) {
             int regIndex1 = instr.parsed[2];  // Source register 1 (rA or rB)
             int regIndex2 = instr.parsed[3];  // Source register 2 (rB or rC)
-
+            cout << "regindex2: " << regIndex2 << "\n";
             // Check if both operands are ready in the register file
             if (registerFile.isReady(regIndex1) && registerFile.isReady(regIndex2)) {
-
+                cout << "op: " << instr.parsed[0] << "\n";
                 // Perform execution based on the opcode (instr.parsed[0])
                 switch (instr.parsed[0]) {
                 case 1:  // LOAD instruction
                 {
-                    int offset = instr.parsed[2];  
+                    int offset = instr.parsed[3];  
                     int address = registerFile.readRegister(regIndex2) + offset;
                     int value = memory.readData(address);  // Load the value from memory
                     // Mark ROB entry as ready and store the value
@@ -166,29 +167,32 @@ void executeStage() {
                     break;
                 }
 
-                case 4:  // ADD instruction
+                case 6:  // ADD instruction
                 {
                     int valueB = registerFile.readRegister(regIndex2);
                     int valueC = registerFile.readRegister(regIndex1);  
                     int result = valueB + valueC;
+                    cout << " result is :" << result << "\n";
+                    registerFile.writeRegister(instr.parsed[1], result);
                     // Mark ROB entry as ready with the result
                     rob.markReady(result);
                     break;
                 }
                 break;
 
-                case 5:  // ADD immediate instruction
+                case 7:  // ADD immediate instruction
                 {
                     int valueB = registerFile.readRegister(regIndex2);
                     int immediate = instr.parsed[3];  
                     int result = valueB + immediate;
+                    registerFile.writeRegister(instr.parsed[1], result);
                     // Mark ROB entry as ready with the result
                     rob.markReady(result);
                     break;
                 }
                 break;
 
-                case 6:  // NAND instruction
+                case 8:  // NAND instruction
                 {
                     int valueB = registerFile.readRegister(regIndex2);
                     int valueC = registerFile.readRegister(regIndex1); 
@@ -199,7 +203,7 @@ void executeStage() {
                 }
                 break;
 
-                case 7:  // MUL instruction
+                case 9:  // MUL instruction
                 {
                     int valueB = registerFile.readRegister(regIndex2);
                     int valueC = registerFile.readRegister(regIndex1);  // Assuming parsed[3] is rC
@@ -216,11 +220,14 @@ void executeStage() {
                 }
 
                 instr.execCycle = clockCycle + getExecutionCycles(instr.parsed[0]);  
-                if (clockCycle == instr.execCycle) {
+                cout << "execcycle: " << instr.execCycle << "\n";
+                if (clockCycle >= instr.execCycle) {
+                    cout << "instruction state is execute now";
                     instr.updateState(execute, clockCycle);  // Move instruction to execute state after the required cycles
+                    cout << "Executed instruction: " << instr.parsed[0] << " in cycle " << instr.execCycle << endl;
                 }
 
-                cout << "Executed instruction: " << instr.parsed[0] << " in cycle " << clockCycle << endl;
+                
             }
             else {
                 // If operands are not ready (dependency exists), the instruction can't execute yet
@@ -233,7 +240,8 @@ void executeStage() {
 // Write-Back Stage
 void writeBackStage() {
     for (auto& instr : pipelineQueue) {
-        if (instr.getCurrentState() == execute) {
+        cout << "state" << instr.getCurrentState() << "\n";
+        if (instr.getCurrentState() == 2) {//
             for (auto& rs : reservationStations) {
                 if (rs.isBusy() && rs.isReady()) {
                     rob.markReady(rs.Vj); // Write result to ROB
@@ -318,28 +326,48 @@ int main() {
     // Initialize reservation stations
     initializeReservationStations();
 
-    // Test instructions
-    vector<string> program = {"ADD R0, R0, R0",//nop
-        "LOAD R1, 0(R2)",  // Load from memory
-        "ADD R3, R1, R4",  // Add
-       // "STORE R3, 8(R2)", // Store to memory
-        "NAND R5, R6, R7", // NAND operation
-        "MUL R8, R1, R2"   // Multiply
-    };
+    cout << "Choose an option:\n";
+    cout << "1. Run predefined test case\n";
+    cout << "2. Enter your own assembly instructions\n";
+    int choice;
+    cin >> choice;
+    cin.ignore(); // To ignore any extra newline left by the previous input
+
+    vector<string> program;
+
+    if (choice == 1) {
+        // Predefined test instructions
+        program = { "ADD R1, R0, R2",  // NOP (no operation)
+                   "ADD R1, R3, R2",  // Load from memory
+                   "LOAD R3, 0(R4)",  // Add
+                   //"STORE R3, 8(R2)", // Store to memory
+                   "NAND R5, R6, R7", // NAND operation
+                   "MUL R8, R1, R2" };  // Multiply
+    }
+    else if (choice == 2) {
+        // User input instructions
+        cout << "Enter your assembly instructions (enter 'done' to finish):\n";
+        string input;
+        while (true) {
+            cout << "Enter instruction: ";
+            getline(cin, input);
+            if (input == "done") {
+                break;
+            }
+            program.push_back(input);
+        }
+    }
+    else {
+        cout << "Invalid option chosen. Exiting...\n";
+        return 1;
+    }
 
     // Load instructions into the instruction queue
     for (const auto& instr : program) {
         instructionQueue.emplace(instr); // Add instructions to queue
     }
 
-    cout << "Instruction Queue Contents: \n";
-    queue<Instruction_Unit> tempQueue = instructionQueue;  
-
-    while (!tempQueue.empty()) {
-        const Instruction_Unit& instr = tempQueue.front();
-        instr.print();  
-        tempQueue.pop();  
-    }
+    
     
     // Run simulation
     runSimulation();
