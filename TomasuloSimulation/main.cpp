@@ -53,11 +53,13 @@ void issueStage() {
     Instruction_Unit& instr = instructionQueue.front();
 
     for (auto& rs : reservationStations) {
-        if (!rs.isBusy() && rob.addEntry(&instr, instr.parsed[1])) {
-            rs.setBusy(true);
+        if (!rs.isBusy() && rob.addEntry(&  instr, instr.parsed[1])) {
+            rs.setBusy(true);//set busy in reservation station
             rs.op = static_cast<Operation>(instr.parsed[0]); // Assign operation
 
-            // Handle operands from registers or ROB
+            
+
+            // source register 1
             if (registerFile.isReady(instr.parsed[2])) {
                 rs.Vj = registerFile.readRegister(instr.parsed[2]);
                 rs.Qj = -1;
@@ -65,7 +67,7 @@ void issueStage() {
             else {
                 rs.Qj = registerFile.readRegister(instr.parsed[2]);
             }
-
+            //source register 2
             if (registerFile.isReady(instr.parsed[3])) {
                 rs.Vk = registerFile.readRegister(instr.parsed[3]);
                 rs.Qk = -1;
@@ -77,11 +79,15 @@ void issueStage() {
             // Update dependency for destination
             registerFile.setDependency(instr.parsed[1], rob.getLatestIndex());
 
+            instr.print();
+
             instr.issueCycle = clockCycle; // Update issue cycle
             pipelineQueue.push_back(instr); // Add instruction to pipeline queue
             instructionQueue.pop(); // Remove from the queue
             instr.updateState(issue, clockCycle); // Update instruction state
-            cout << "Issued: " << instr.opcode << "\n";
+            rs.setOperands(rs.Vj, rs.Vk);
+            instr.print();
+            cout << "Issued in cycle " << instr.issueCycle<<"\n";
             return;
         }
     }
@@ -89,54 +95,181 @@ void issueStage() {
     cout << "Issue Stage: No free reservation station or ROB entry available.\n";
 }
 
+int getExecutionCycles(int operation) {
+    switch (operation) {
+    case 1:
+        return 6;  
+    case 2:
+        return 6;  
+    case 3:
+        return 1;  
+    case 4:
+        return 2; 
+    case 5:
+        return 2;  
+    case 6:
+        return 1;  
+    case 7:
+        return 8;  
+   
+    }
+}
+
 // Execute Stage
 void executeStage() {
-    for (auto& rs : reservationStations) {
-        if (rs.isBusy() && rs.isReady()) {
-            // Simulate execution (for ADD)
-            rs.Vj += rs.Vk; // Example for ADD operation
-            for (auto& instr : pipelineQueue) {
-                if (instr.getCurrentState() == issue) {
-                    instr.execCycle = clockCycle; // Record execution cycle
+    for (auto& instr : pipelineQueue) {
+        if (instr.getCurrentState() == issue) {
+            int regIndex1 = instr.parsed[2];  // Source register 1 (rA or rB)
+            int regIndex2 = instr.parsed[3];  // Source register 2 (rB or rC)
+
+            // Check if both operands are ready in the register file
+            if (registerFile.isReady(regIndex1) && registerFile.isReady(regIndex2)) {
+
+                // Perform execution based on the opcode (instr.parsed[0])
+                switch (instr.parsed[0]) {
+                case 1:  // LOAD instruction
+                {
+                    int offset = instr.parsed[2];  
+                    int address = registerFile.readRegister(regIndex2) + offset;
+                    int value = memory.readData(address);  // Load the value from memory
+                    // Mark ROB entry as ready and store the value
+                    rob.markReady(value);
+                    break;
                 }
+                break;
+
+                case 2:  // STORE instruction
+                {
+                    int offset = instr.parsed[2]; 
+                    int address = registerFile.readRegister(regIndex2) + offset;
+                    int value = registerFile.readRegister(regIndex1);  // Read value from rA
+                    memory.writeData(address, value);  // Write value to memory
+                    // Mark ROB entry as ready, no value to store in the register file
+                    rob.markReady(value);
+                    break;
+                }
+                break;
+
+                case 3: {  // Branch if equal instruction
+                    // Compare rA and rB, if equal branch to PC + 1 + offset
+                    int offset = instr.parsed[3];  
+                    int valueA = registerFile.readRegister(regIndex1);
+                    int valueB = registerFile.readRegister(regIndex2);
+                    //if (valueA == valueB) {
+                      //  programCounter += offset;  // Branch
+                    //}
+                    //else {
+                      //  programCounter++;  // Normal increment if branch is not taken
+                    //}
+                    // Mark ROB entry as ready, as the comparison is done
+                    //rob.markReady(0);  // No specific value needed for branch operation
+                    break;
+                }
+
+                case 4:  // ADD instruction
+                {
+                    int valueB = registerFile.readRegister(regIndex2);
+                    int valueC = registerFile.readRegister(regIndex1);  
+                    int result = valueB + valueC;
+                    // Mark ROB entry as ready with the result
+                    rob.markReady(result);
+                    break;
+                }
+                break;
+
+                case 5:  // ADD immediate instruction
+                {
+                    int valueB = registerFile.readRegister(regIndex2);
+                    int immediate = instr.parsed[3];  
+                    int result = valueB + immediate;
+                    // Mark ROB entry as ready with the result
+                    rob.markReady(result);
+                    break;
+                }
+                break;
+
+                case 6:  // NAND instruction
+                {
+                    int valueB = registerFile.readRegister(regIndex2);
+                    int valueC = registerFile.readRegister(regIndex1); 
+                    int result = ~(valueB & valueC);
+                    // Mark ROB entry as ready with the result
+                    rob.markReady(result);
+                    break;
+                }
+                break;
+
+                case 7:  // MUL instruction
+                {
+                    int valueB = registerFile.readRegister(regIndex2);
+                    int valueC = registerFile.readRegister(regIndex1);  // Assuming parsed[3] is rC
+                    int result = valueB * valueC;
+                    // Mark ROB entry as ready with the least significant 16 bits of the result
+                    rob.markReady(result & 0xFFFF);  // 16-bit result (assuming we only need lower 16 bits)
+                    break;
+                }
+                break;
+
+                default:
+                    cerr << "Unknown operation type: " << instr.parsed[0] << endl;
+                    break;
+                }
+
+                instr.execCycle = clockCycle + getExecutionCycles(instr.parsed[0]);  
+                if (clockCycle == instr.execCycle) {
+                    instr.updateState(execute, clockCycle);  // Move instruction to execute state after the required cycles
+                }
+
+                cout << "Executed instruction: " << instr.parsed[0] << " in cycle " << clockCycle << endl;
             }
-            cout << "Executed: " << rs.op << "\n";
+            else {
+                // If operands are not ready (dependency exists), the instruction can't execute yet
+                cout << "Operands for instruction not ready yet. Waiting...\n";
+            }
         }
     }
 }
 
 // Write-Back Stage
 void writeBackStage() {
-    for (auto& rs : reservationStations) {
-        if (rs.isBusy() && rs.isReady()) {
-            rob.markReady(rs.Vj); // Write result to ROB
-            registerFile.writeRegister(rs.Qi, rs.Vj); // Write to destination register
-            rs.reset(); // Free reservation station
-            for (auto& instr : pipelineQueue) {
-                if (instr.getCurrentState() == execute) {
-                    instr.writeCycle = clockCycle; // Record write cycle
+    for (auto& instr : pipelineQueue) {
+        if (instr.getCurrentState() == execute) {
+            for (auto& rs : reservationStations) {
+                if (rs.isBusy() && rs.isReady()) {
+                    rob.markReady(rs.Vj); // Write result to ROB
+                    registerFile.writeRegister(rs.Qi, rs.Vj); // Write to destination register
+                    rs.reset(); // Free reservation station
+                    for (auto& instr : pipelineQueue) {
+                        if (instr.getCurrentState() == execute) {
+                            instr.writeCycle = clockCycle; 
+                        }
+                    }
+                    cout << "Write-Back: Result " << rs.Vj << " written.\n";
                 }
             }
-            cout << "Write-Back: Result " << rs.Vj << " written.\n";
+            instr.updateState(write, clockCycle);
         }
     }
 }
 
+
 // Commit Stage
 void commitStage() {
-    if (!rob.isEmpty()) {
-        if (rob.commit()) {
-            instructionsCommitted++; // Increment the commit counter
-            registerFile.freeRegistersFromROB(rob); // Clear register dependencies
-            for (auto& instr : pipelineQueue) {
-                if (instr.getCurrentState() == write) {
-                    instr.commitCycle = clockCycle; // Record commit cycle
-                }
-            }
-            cout << "Commit Stage: Committed instruction from ROB.\n";
+    for (auto& instr : pipelineQueue) {
+        if (instr.getCurrentState() == execute) {
+            if (!rob.isEmpty()) {
+                if (rob.commit()) {
+                    instructionsCommitted++; // Increment the commit counter
+                    registerFile.freeRegistersFromROB(rob); // Clear register dependencies
+                    for (auto& instr : pipelineQueue) {
+                        if (instr.getCurrentState() == write) {
+                            instr.commitCycle = clockCycle; // Record commit cycle
+                        }
+                    }
+                    cout << "Commit Stage: Committed instruction from ROB.\n";
         }
     }
-}
+}}}
 
 // Print current state
 void printState() {
@@ -186,10 +319,10 @@ int main() {
     initializeReservationStations();
 
     // Test instructions
-    vector<string> program = {
+    vector<string> program = {"ADD R0, R0, R0",//nop
         "LOAD R1, 0(R2)",  // Load from memory
         "ADD R3, R1, R4",  // Add
-        "STORE R3, 8(R2)", // Store to memory
+       // "STORE R3, 8(R2)", // Store to memory
         "NAND R5, R6, R7", // NAND operation
         "MUL R8, R1, R2"   // Multiply
     };
@@ -199,6 +332,15 @@ int main() {
         instructionQueue.emplace(instr); // Add instructions to queue
     }
 
+    cout << "Instruction Queue Contents: \n";
+    queue<Instruction_Unit> tempQueue = instructionQueue;  
+
+    while (!tempQueue.empty()) {
+        const Instruction_Unit& instr = tempQueue.front();
+        instr.print();  
+        tempQueue.pop();  
+    }
+    
     // Run simulation
     runSimulation();
 
