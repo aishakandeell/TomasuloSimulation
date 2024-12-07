@@ -129,11 +129,15 @@
   <ItemGroup>
     <ClCompile Include="Instruction_Unit.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="Register_File.cpp" />
     <ClCompile Include="Reservation_Station.cpp" />
     <ClCompile Include="ROB.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Instruction_Unit.h" />
+    <ClInclude Include="Memory.h" />
+    <ClInclude Include="Register_File.h" />
     <ClInclude Include="Reservation_Station.h" />
     <ClInclude Include="ROB.h" />
   </ItemGroup>

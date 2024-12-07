@@ -27,6 +27,12 @@
     <ClCompile Include="ROB.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Register_File.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Memory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Instruction_Unit.h">
@@ -36,6 +42,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ROB.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Register_File.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -2,7 +2,7 @@
 #include <iostream>
 using namespace std;
 
-ROB::ROB(int size) : maxEntries(size) {}
+ROB::ROB(int size) : maxEntries(size), currentIndex(-1) {}
 
 bool ROB::addEntry(Instruction_Unit* instruction, int destination) {
     if (isFull()) {
@@ -13,6 +13,7 @@ bool ROB::addEntry(Instruction_Unit* instruction, int destination) {
     // Create a new ROB entry and push it to the queue
     ROBEntry entry(instruction, destination, 0, false);
     entries.push(entry);
+    currentIndex++;
     return true;
 }
 
@@ -50,7 +51,11 @@ bool ROB::commit() {
 
     // remove the committed entry from the queue
     entries.pop();
+    currentIndex--;
     return true;
+}
+int ROB::getLatestIndex() const {
+    return currentIndex;
 }
 
 bool ROB::isFull() const {

@@ -19,12 +19,13 @@ struct ROBEntry {
 
 class ROB {
 private:
-    queue<ROBEntry> entries; // Queue for the ROB
+    
     int maxEntries;               // pass size 6 
-
+    int currentIndex;
 public:
     // Constructor
     ROB(int size = 6);
+    queue<ROBEntry> entries; // Queue for the ROB
 
     // add an entry to the ROB
     bool addEntry(Instruction_Unit* instruction, int destination);
@@ -40,6 +41,7 @@ public:
 
     // check if empty empty
     bool isEmpty() const;
+    int getLatestIndex() const;
 
     void print() const;
 };
